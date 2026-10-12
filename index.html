@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html data-fused-theme="shell">
+<head>
+<meta charset="utf-8" />
+<meta name="fused-app" />
+<meta name="fused-api-version" content="1" />
+<meta name="fused-app-id" content="h3-foldable-403ed62c" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>H3 Foldable Globe</title>
+<style id="page-size">@page { size: 297mm 210mm; margin: 0; }</style>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #131417; --panel: #1b1d22; --fg: #e8eaed; --muted: #9aa0a6;
+    --line: #2c2f36; --accent: #e0633a; --desk: #0e0f12; --btn: #24272e;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #ffffff; --panel: #f6f6f4; --fg: #1f2023; --muted: #61656c;
+    --line: #e1e0d9; --accent: #d4532b; --desk: #e9e8e4; --btn: #ffffff;
+  }
+  /* paper colours: fixed, the sheet is paper in either theme */
+  :root {
+    --ocean: #c9d3e6; --coast: #e9d9b8; --land: #f6ecd9; --pent: #e0633a;
+    --tab: #e8dcea; --tab-edge: #b9a3c0; --coastline: #5d4a36; --ink: #222;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; }
+  button, input, select, textarea { font: inherit; color: inherit; margin: 0; }
+  ::placeholder { color: var(--muted); opacity: 1; }
+  input, select, textarea, progress { accent-color: var(--accent, currentColor); }
+  img, svg, video, canvas { display: block; max-width: 100%; }
+
+  html, body { height: 100%; }
+  body {
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--fg); background: var(--bg);
+    display: flex; overflow: hidden;
+  }
+
+  /* ---------------------------------------------------------- sidebar */
+  aside {
+    width: 320px; flex: none; height: 100%; overflow-y: auto;
+    background: var(--panel); border-right: 1px solid var(--line);
+    padding: 18px 18px 24px;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  aside::-webkit-scrollbar { width: 8px; }
+  aside::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  h1 { font-size: 16px; font-weight: 600; margin: 0 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  .label {
+    font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); margin: 16px 0 6px;
+  }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    flex: 1; padding: 6px 0; border: 0; background: var(--btn); cursor: pointer;
+    border-right: 1px solid var(--line);
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 600; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 5px; }
+  .checks label { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer;
+    -webkit-user-select: none; user-select: none; }
+  .row { display: flex; gap: 6px; }
+  .btn {
+    flex: 1; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--btn); cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  #globe { width: 284px; height: 284px; margin: 4px auto 0; cursor: grab; touch-action: none; }
+  #globe.dragging { cursor: grabbing; }
+  .legend { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; font-size: 12px; }
+  .sw { width: 22px; height: 0; border-top: 2px solid; }
+  .sw.dash { border-top-style: dashed; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; margin-left: 6px; }
+  #status { color: var(--muted); font-size: 12px; margin-top: 12px; min-height: 2.8em; }
+  #status.err { color: var(--accent); white-space: pre-wrap; }
+
+  /* ---------------------------------------------------------- desk */
+  main {
+    flex: 1; min-width: 0; height: 100%; overflow: auto; background: var(--desk);
+    padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 24px;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  main::-webkit-scrollbar { width: 10px; }
+  main::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+  .fit { flex: none; position: relative; }
+  .sheet {
+    position: absolute; top: 0; left: 0; transform-origin: 0 0;
+    background: #fff; color: var(--ink); box-shadow: 0 2px 14px rgba(0,0,0,.25);
+    overflow: hidden;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .sheet svg { max-width: none; }
+  .placeholder { color: var(--muted); margin: auto; text-align: center; }
+
+  /* ---------------------------------------------------------- page 2 */
+  .explain { padding: 16mm 18mm; font-size: 3.4mm; line-height: 1.5; color: #333; height: 100%; position: relative; }
+  .explain h2 { font-size: 8mm; font-weight: 400; margin: 0; color: #111; }
+  .explain .kicker { font-size: 2.6mm; color: #888; margin: 0.5mm 0 5mm; }
+  .explain h3 { font-size: 2.7mm; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+    color: #222; margin: 6mm 0 1.5mm; }
+  .explain p { margin: 0 0 2.5mm; max-width: 235mm; }
+  .explain .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12mm; }
+  .explain ol { margin: 0; padding-left: 5mm; }
+  .explain li { margin-bottom: 1.2mm; }
+  .explain table { border-collapse: collapse; font-size: 3.1mm; }
+  .explain td { padding: 0.8mm 5mm 0.8mm 0; }
+  .explain td:first-child { color: #777; }
+  .explain .key { display: grid; grid-template-columns: 7mm 1fr; gap: 1.6mm 3mm; align-items: center; }
+  .explain .chip { width: 7mm; height: 4mm; border: 0.2mm solid rgba(0,0,0,.15); }
+  .explain .foot { position: absolute; left: 18mm; right: 18mm; bottom: 9mm; font-size: 2.4mm; color: #888;
+    display: flex; justify-content: space-between; }
+
+  @media print {
+    html, body { height: auto; overflow: visible; background: #fff; display: block; }
+    aside { display: none; }
+    main { display: block; padding: 0; overflow: visible; background: #fff; height: auto; }
+    .fit { width: auto !important; height: auto !important; }
+    .sheet { position: static; transform: none !important; box-shadow: none; break-after: page; page-break-after: always; }
+    .sheet:last-child { break-after: auto; page-break-after: auto; }
+  }
+  .shapes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .shapes button {
+    display: flex; align-items: center; gap: 8px; text-align: left; padding: 6px 8px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--btn); cursor: pointer; min-width: 0;
+  }
+  .shapes button svg { flex: none; width: 26px; height: 26px; color: var(--muted); }
+  .shapes button span { display: block; min-width: 0; }
+  .shapes button b { display: block; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .shapes button small { display: block; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .shapes button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .shapes button[aria-pressed="true"] svg { color: var(--accent); }
+  #net-count { text-align: center; color: var(--muted); font-size: 12px; margin-top: 5px; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>H3 Foldable Globe</h1>
+  <p class="sub">H3 hexagons on a printable net. Pick a shape, print it, cut, fold and glue.</p>
+
+  <div class="label">Shape</div>
+  <div class="shapes" id="shape"></div>
+
+  <div class="label">Globe</div>
+  <canvas id="globe"></canvas>
+  <div class="hint" id="globe-hint" style="text-align:center"></div>
+  <div class="legend" style="margin-top:8px">
+    <span class="sw" style="border-color:var(--accent)"></span><span>Cut / glue seam</span>
+    <span class="sw dash" style="border-color:var(--muted)"></span><span>Fold line</span>
+    <span class="dot" style="background:var(--pent)"></span><span>H3 pentagon (12 at every resolution)</span>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button class="btn" id="net-prev" title="Previous net layout">◀ Net</button>
+    <button class="btn" id="auto" title="Best net: biggest on the page, least land cut">Auto</button>
+    <button class="btn" id="net-next" title="Next net layout">Net ▶</button>
+  </div>
+  <div id="net-count"></div>
+
+  <div class="label">H3 resolution</div>
+  <div class="seg" id="res">
+    <button data-v="0">0</button><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button>
+  </div>
+  <div class="hint" id="res-hint"></div>
+
+  <div class="label">Paper</div>
+  <div class="seg" id="paper">
+    <button data-v="a4">A4</button><button data-v="a3">A3</button><button data-v="letter">Letter</button>
+  </div>
+
+  <div class="label">Show</div>
+  <div class="checks">
+    <label><input type="checkbox" data-p="pent" /> Highlight pentagons</label>
+    <label><input type="checkbox" data-p="coast" /> Coastline</label>
+    <label><input type="checkbox" data-p="grid" /> Cell outlines</label>
+    <label><input type="checkbox" data-p="labels" /> Cell IDs <span class="hint" style="margin:0">(res 0–1)</span></label>
+    <label><input type="checkbox" data-p="faces" /> Panel numbers</label>
+  </div>
+
+  <div class="row" style="margin-top:18px">
+    <button class="btn primary" id="print">Print / save PDF</button>
+    <button class="btn" id="svg">Download SVG</button>
+  </div>
+  <div id="status"></div>
+</aside>
+
+<main id="desk"><div class="placeholder">Loading…</div></main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------------ preview
+  function isPreview() {
+    if (new URLSearchParams(location.search).get("_preview") === "1") return true;
+    try {
+      let w = window;
+      while (w.parent && w.parent !== w) {
+        w = w.parent;
+        if (new URLSearchParams(w.location.search).get("_preview") === "1") return true;
+      }
+    } catch (e) { /* cross-origin ancestor: the climb ends here */ }
+    return false;
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const desk = $("desk");
+  const statusEl = $("status");
+
+  if (isPreview()) {
+    desk.innerHTML = '<div class="placeholder">H3 foldable globe: printable nets of H3 cells on seven shapes.</div>';
+    return;
+  }
+
+  // ------------------------------------------------------------------ shapes
+  const I = (d) => `<svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">${d}</svg>`;
+  const SHAPES = [
+    ["icosahedron", "Icosahedron", "H3 native · 20",
+      I('<path d="M13 2 L23 8 L23 18 L13 24 L3 18 L3 8 Z"/><path d="M13 2 L8 11 L18 11 Z M8 11 L3 18 M18 11 L23 18 M8 11 L13 24 L18 11" opacity=".7"/>')],
+    ["truncated-icosahedron", "Soccer ball", "32 faces",
+      I('<circle cx="13" cy="13" r="11"/><path d="M13 8 L17.8 11.5 L16 17 L10 17 L8.2 11.5 Z"/><path d="M13 8 L13 2 M17.8 11.5 L23 9.5 M16 17 L19.5 22 M10 17 L6.5 22 M8.2 11.5 L3 9.5" opacity=".7"/>')],
+    ["dodecahedron", "Dodecahedron", "12 pentagons",
+      I('<path d="M13 2 L23.5 9.6 L19.5 22 L6.5 22 L2.5 9.6 Z"/><path d="M13 7 L18.2 10.8 L16.2 17 L9.8 17 L7.8 10.8 Z M13 2 L13 7 M23.5 9.6 L18.2 10.8 M19.5 22 L16.2 17 M6.5 22 L9.8 17 M2.5 9.6 L7.8 10.8" opacity=".7"/>')],
+    ["octahedron", "Octahedron", "Butterfly · 8",
+      I('<path d="M13 2 L23 13 L13 24 L3 13 Z"/><path d="M3 13 L17 15 L23 13 M13 2 L17 15 L13 24" opacity=".7"/>')],
+    ["cube", "Cube", "S2 faces · 6",
+      I('<path d="M13 3 L23 8 L23 19 L13 24 L3 19 L3 8 Z"/><path d="M3 8 L13 13 L23 8 M13 13 L13 24" opacity=".7"/>')],
+    ["tetrahedron", "Tetrahedron", "4 faces",
+      I('<path d="M13 3 L24 21 L2 21 Z"/><path d="M13 3 L15 16 L24 21 M15 16 L2 21" opacity=".7"/>')],
+    ["gores", "Gores", "Orange peel · 12",
+      I('<ellipse cx="13" cy="13" rx="10.5" ry="11"/><path d="M13 2 C7 7 7 19 13 24 M13 2 C19 7 19 19 13 24 M13 2 C2 7 2 19 13 24 M13 2 C24 7 24 19 13 24" opacity=".7"/>')],
+  ];
+  $("shape").innerHTML = SHAPES.map(([k, name, tag, icon]) =>
+    `<button data-v="${k}" title="${name}">${icon}<span><b>${name}</b><small>${tag}</small></span></button>`).join("");
+
+  // ------------------------------------------------------------------ params
+  const DEFAULTS = { shape: "icosahedron", res: "2", net: "auto", paper: "a4",
+                     pent: "1", coast: "1", grid: "1", labels: "1", faces: "1" };
+  const get = (k) => { const v = fused.params.get(k); return v == null || v === "" ? DEFAULTS[k] : v; };
+  const on = (k) => get(k) === "1";
+
+  const PAPER = { a4: [297, 210, "A4"], a3: [420, 297, "A3"], letter: [279.4, 215.9, "Letter"] };
+  const RES_HINT = {
+    0: "122 cells, about 1,100 km across. Big enough to print each cell ID.",
+    1: "842 cells, about 420 km across. Cell IDs still readable.",
+    2: "5,882 cells, about 160 km across. Good for most maps.",
+    3: "41,162 cells, about 60 km across. Fine detail, no labels.",
+  };
+
+  let data = null;
+  let dataKey = "";
+
+  // ------------------------------------------------------------------ fetch
+  const netButtons = () => document.querySelectorAll("#net-prev,#net-next,#auto");
+
+  async function load() {
+    const key = [get("shape"), get("res"), get("net")].join("|");
+    if (key === dataKey && data) return;
+    setStatus("Building the net…");
+    netButtons().forEach((b) => (b.disabled = true));
+    try {
+      data = await fused.runPython("foldable.py", { shape: get("shape"), res: get("res"), net: get("net") });
+      dataKey = key;
+      prepGlobe();
+    } catch (err) {
+      setStatus(err.message || String(err), true);
+      throw err;
+    } finally {
+      netButtons().forEach((b) => (b.disabled = false));
+    }
+  }
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.className = isErr ? "err" : "";
+  }
+
+  // ------------------------------------------------------------------ net geometry (mm)
+  function fitNet(pageW, pageH) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const grow = ([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); };
+    data.panels.forEach((p) => p.outline.forEach(grow));
+    data.tabs.forEach((t) => t.forEach(grow));
+    const margin = 10, headH = 12, footH = 12;
+    const availW = pageW - 2 * margin, availH = pageH - 2 * margin - headH - footH;
+    const s = Math.min(availW / (x1 - x0), availH / (y1 - y0));
+    const ox = (pageW - s * (x1 - x0)) / 2;
+    const oy = margin + headH + (availH - s * (y1 - y0)) / 2;
+    const T = ([x, y]) => [ox + (x - x0) * s, oy + (y1 - y) * s];
+    // typical panel size in mm, for scaling text
+    const p0 = data.panels[0].outline;
+    const panelMm = s * Math.hypot(p0[1][0] - p0[0][0], p0[1][1] - p0[0][1]);
+    return { s, T, panelMm };
+  }
+
+  const f2 = (v) => Math.round(v * 100) / 100;
+  function lineOf(pts, T, close) {
+    let d = "";
+    for (let i = 0; i < pts.length; i++) {
+      const [x, y] = T(pts[i]);
+      d += (i ? "L" : "M") + f2(x) + " " + f2(y);
+    }
+    return close ? d + "Z" : d;
+  }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const shortId = (id) => id.replace(/f+$/, "");
+
+  function panelLabel(n) {
+    if (data.shape === "icosahedron") return "F" + n;       // H3 face id
+    if (data.shape === "cube") return "S2·" + n;            // S2 face id
+    return String(n);
+  }
+
+  function sheetSvg(pageW, pageH) {
+    const { s, T, panelMm } = fitNet(pageW, pageH);
+    const res = data.res;
+    const out = [];
+    out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${pageW}mm" height="${pageH}mm" viewBox="0 0 ${pageW} ${pageH}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">`);
+    out.push(`<rect width="${pageW}" height="${pageH}" fill="#fff"/>`);
+
+    out.push(`<text x="10" y="15" font-size="5" fill="#111">H3 Foldable Globe · ${esc(data.info.name)}</text>`);
+    out.push(`<text x="10" y="19.5" font-size="2.5" fill="#777">${esc(data.info.faces)} · H3 resolution ${res} · ${data.stats.cells.toLocaleString()} cells · 12 pentagons</text>`);
+
+    // tabs: filled, outlined on the three free sides (the base is a fold)
+    out.push(`<path d="${data.tabs.map((t) => lineOf(t, T, true)).join("")}" fill="#e8dcea"/>`);
+
+    // cells, one path per class so the SVG stays light
+    const buckets = ["", "", "", ""];
+    for (const c of data.cells) {
+      const k = on("pent") && c[2] ? 3 : c[1];
+      for (const piece of c[3]) buckets[k] += lineOf(piece, T, true);
+    }
+    const fills = ["#c9d3e6", "#e9d9b8", "#f6ecd9", "#e0633a"];
+    const cellMm = panelMm / Math.max(1, Math.sqrt(data.stats.cells / data.stats.panels));
+    const gridStroke = on("grid") ? `stroke="#fff" stroke-width="${f2(Math.max(0.06, Math.min(0.2, cellMm * 0.04)))}" stroke-linejoin="round"` : "";
+    buckets.forEach((d, k) => { if (d) out.push(`<path d="${d}" fill="${fills[k]}" ${gridStroke}/>`); });
+
+    if (on("coast")) {
+      out.push(`<path d="${data.coast.map((l) => lineOf(l, T)).join("")}" fill="none" stroke="#5d4a36" stroke-width="0.22" stroke-linejoin="round" stroke-linecap="round"/>`);
+    }
+
+    if (on("labels") && res <= 1) {
+      const fs = Math.max(0.5, Math.min(res === 0 ? 2.2 : 1.1, cellMm * (res === 0 ? 0.12 : 0.2)));
+      const txt = data.cells.map((c) => {
+        const [x, y] = T(c[5]);
+        return `<text x="${f2(x)}" y="${f2(y + fs * 0.35)}">${esc(res === 0 ? c[0] : shortId(c[0]))}</text>`;
+      }).join("");
+      out.push(`<g font-size="${f2(fs)}" fill="#333" fill-opacity="0.75" text-anchor="middle">${txt}</g>`);
+    }
+
+    if (on("faces")) {
+      const fs = Math.max(1.6, Math.min(3.2, panelMm * 0.07));
+      const txt = data.panels.map((p) => {
+        const [x, y] = T(p.label);
+        return `<text x="${f2(x)}" y="${f2(y + fs * 0.35)}">${esc(panelLabel(p.num))}</text>`;
+      }).join("");
+      out.push(`<g font-size="${f2(fs)}" font-weight="600" fill="#1f2a44" fill-opacity="0.35" text-anchor="middle">${txt}</g>`);
+    }
+
+    out.push(`<path d="${data.folds.map((l) => lineOf(l, T)).join("")}" fill="none" stroke="#333" stroke-width="0.2" stroke-dasharray="1.2 0.8"/>`);
+    const cut = data.cuts.map((l) => lineOf(l, T)).join("") + data.tabs.map((t) => lineOf(t, T)).join("");
+    out.push(`<path d="${cut}" fill="none" stroke="#222" stroke-width="0.25" stroke-linejoin="round"/>`);
+
+    const fy = pageH - 12;
+    const how = data.shape === "gores"
+      ? "Cut along solid lines · curl each gore and glue its tabs under the next gore's edge"
+      : "Cut along solid lines · fold along dashed lines · glue the tabs";
+    out.push(`<text x="10" y="${fy}" font-size="2.6" fill="#555">${how}</text>`);
+    out.push(`<text x="10" y="${fy + 4}" font-size="2.2" fill="#888">Grid: H3 (h3geo.org), ${data.shape === "gores" ? "sinusoidal projection per gore" : "gnomonic projection per face"}. Land: Natural Earth. Net ${data.net + 1} of ${data.net_count}.</text>`);
+    out.push(`</svg>`);
+    return out.join("");
+  }
+
+  function explainHtml() {
+    const st = data.stats;
+    const km = (v) => Math.round(v).toLocaleString();
+    const [lo, hi] = st.distortion;
+    const gores = data.shape === "gores";
+    const steps = gores
+      ? `<li>Print at 100% (actual size), no fit to page. Use thin, flexible paper (80–120 g/m²).</li>
+         <li>Cut each gore along its curved outline, keeping the purple tabs. The gores stay joined at the equator.</li>
+         <li>Curl each gore gently over a pencil so it takes a curve.</li>
+         <li>Glue each gore's tabs under the next gore's edge, working from the equator toward the poles. Close the last gore onto the first.</li>`
+      : `<li>Print at 100% (actual size), no fit to page. Thick paper (160 g/m² or more) folds best.</li>
+         <li>Cut around the outside along the solid lines, keeping the purple tabs.</li>
+         <li>Score and fold every dashed line, including the base of each tab.</li>
+         <li>Glue one tab at a time, each to the face edge it meets. Close the last few faces together at the end.</li>`;
+    return `<div class="explain">
+      <h2>${esc(data.info.name)}: H3, folded</h2>
+      <div class="kicker">What you're holding. Read it out while you fold.</div>
+      <p>H3 is a grid that covers the whole Earth with hexagons. It was built by Uber and is now used to index almost any kind of location data.
+      Its hexagons are the same whatever shape you fold. What changes is how the globe is cut up to lie flat, and how much each hexagon gets stretched on paper.</p>
+      <p><b>${esc(data.info.name)} (${esc(data.info.faces)}).</b> ${esc(data.info.blurb)}</p>
+      <div class="cols">
+        <div>
+          <h3>The 12 pentagons</h3>
+          <p>A sphere can't be covered with hexagons alone. At every H3 resolution there are exactly 12 pentagons, highlighted in orange.
+          They sit on the corners of H3's own icosahedron, all out in the ocean.</p>
+          <h3>Why cells are split</h3>
+          <p>A cell that crosses a fold or a seam is printed in pieces, one on each side. Fold the paper and the pieces meet again.</p>
+          <h3>How to read the colours</h3>
+          <div class="key">
+            <span class="chip" style="background:#f6ecd9"></span><span>Land: most of the cell is on land</span>
+            <span class="chip" style="background:#e9d9b8"></span><span>Coast: the coastline passes through the cell</span>
+            <span class="chip" style="background:#c9d3e6"></span><span>Ocean</span>
+            <span class="chip" style="background:#e0633a"></span><span>Pentagon</span>
+          </div>
+        </div>
+        <div>
+          <h3>This print</h3>
+          <table>
+            <tr><td>Shape</td><td>${esc(data.info.name)}, ${st.panels} panels</td></tr>
+            <tr><td>H3 resolution</td><td>${data.res}</td></tr>
+            <tr><td>Cells on the globe</td><td>${st.cells.toLocaleString()} (12 of them pentagons)</td></tr>
+            <tr><td>Average cell area</td><td>${km(st.area_km2)} km²</td></tr>
+            <tr><td>Average edge length</td><td>${km(st.edge_km)} km</td></tr>
+            <tr><td>Size on paper</td><td>${lo === hi ? "every cell printed to scale (equal-area)" : `cells printed at ${lo}× to ${hi}× their true relative size`}</td></tr>
+            <tr><td>Land along the cut lines</td><td>${Math.round(st.cut_land * 100)}%</td></tr>
+          </table>
+          <h3>Assembly</h3>
+          <ol>${steps}</ol>
+        </div>
+      </div>
+      <div class="foot"><span>Grid: H3 by Uber (Apache 2.0) · h3geo.org · Land and coastline: Natural Earth (public domain)</span><span>Made with Fused</span></div>
+    </div>`;
+  }
+
+  // ------------------------------------------------------------------ desk
+  const MM = 96 / 25.4;
+  let sheets = [];
+
+  function renderDesk() {
+    if (!data) return;
+    const [w, h, name] = PAPER[get("paper")] || PAPER.a4;
+    $("page-size").textContent = `@page { size: ${w}mm ${h}mm; margin: 0; }`;
+    desk.innerHTML = "";
+    sheets = [];
+    for (const html of [sheetSvg(w, h), explainHtml()]) {
+      const fit = document.createElement("div");
+      fit.className = "fit";
+      const sheet = document.createElement("div");
+      sheet.className = "sheet";
+      sheet.style.width = w + "mm";
+      sheet.style.height = h + "mm";
+      sheet.innerHTML = html;
+      fit.appendChild(sheet);
+      desk.appendChild(fit);
+      sheets.push({ fit, sheet, w, h });
+    }
+    scaleSheets();
+    const st = data.stats;
+    setStatus(`${data.info.name} · ${name} landscape · resolution ${data.res} · ${st.cells.toLocaleString()} cells · ` +
+              `${Math.round(st.cut_land * 100)}% of the cut lines cross land.`);
+    $("net-count").textContent = `Net ${data.net + 1} of ${data.net_count}${get("net") === "auto" ? " (auto)" : ""}`;
+  }
+
+  function scaleSheets() {
+    const avail = desk.clientWidth - 48;
+    for (const { fit, sheet, w, h } of sheets) {
+      const k = Math.min(1.6, avail / (w * MM));
+      sheet.style.transform = `scale(${k})`;
+      fit.style.width = w * MM * k + "px";
+      fit.style.height = h * MM * k + "px";
+    }
+  }
+  new ResizeObserver(scaleSheets).observe(desk);
+
+  // ------------------------------------------------------------------ globe
+  const cv = $("globe");
+  const ctx = cv.getContext("2d");
+  const view = { lat: 20, lng: 10 };
+  let G = null;
+
+  const rad = Math.PI / 180;
+  function xyz(lat, lng) {
+    const a = lat * rad, b = lng * rad;
+    return [Math.cos(a) * Math.cos(b), Math.cos(a) * Math.sin(b), Math.sin(a)];
+  }
+
+  function prepGlobe() {
+    G = {
+      cells: data.cells.map((c) => ({ k: c[2] ? 3 : c[1], pts: c[4].map(([la, ln]) => xyz(la, ln)) })),
+      coast: data.coast_ll.map((l) => l.map(([la, ln]) => xyz(la, ln))),
+      lines: data.globe.lines.map((g) => ({ cut: g.cut, pts: g.pts.map(([la, ln]) => xyz(la, ln)) })),
+      anchors: data.globe.anchors.map((a) => ({ v: xyz(a.ll[0], a.ll[1]), net: a.net })),
+    };
+    $("globe-hint").textContent = G.anchors.length
+      ? "Drag to spin. Click a dot to rebuild the net around it."
+      : "Drag to spin. Use Net ◀ ▶ to move the gore seams.";
+  }
+
+  function sizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const css = cv.clientWidth;
+    cv.width = Math.round(css * dpr);
+    cv.height = Math.round(css * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return css;
+  }
+
+  function drawGlobe() {
+    const size = sizeCanvas();
+    const R = size / 2 - 6, cx = size / 2, cy = size / 2;
+    const l = -view.lng * rad, p = view.lat * rad;
+    const cl = Math.cos(l), sl = Math.sin(l), cp = Math.cos(p), sp = Math.sin(p);
+    const proj = (v) => {
+      const x1 = v[0] * cl - v[1] * sl, y1 = v[0] * sl + v[1] * cl, z1 = v[2];
+      const x2 = x1 * cp + z1 * sp, z2 = -x1 * sp + z1 * cp;
+      return [cx + R * y1, cy - R * z2, x2];
+    };
+    ctx.clearRect(0, 0, size, size);
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = "#c9d3e6";
+    ctx.fill();
+    if (!G) return;
+
+    const fills = ["#c9d3e6", "#e9d9b8", "#f6ecd9", "#e0633a"];
+    const paths = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+    for (const c of G.cells) {
+      if (c.k === 0) continue;
+      const k = c.k === 3 && !on("pent") ? 2 : c.k;
+      let vis = true;
+      const pr = c.pts.map((v) => { const q = proj(v); if (q[2] < 0) vis = false; return q; });
+      if (!vis) continue;
+      const path = paths[k];
+      path.moveTo(pr[0][0], pr[0][1]);
+      for (let i = 1; i < pr.length; i++) path.lineTo(pr[i][0], pr[i][1]);
+      path.closePath();
+    }
+    for (let k = 1; k < 4; k++) { ctx.fillStyle = fills[k]; ctx.fill(paths[k]); }
+    if (on("grid") && data.res <= 2) {
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 0.5;
+      for (let k = 1; k < 4; k++) ctx.stroke(paths[k]);
+    }
+
+    const strokeLines = (lines, style, width, dash) => {
+      ctx.beginPath();
+      for (const line of lines) {
+        let pen = false;
+        for (const v of line) {
+          const [x, y, z] = proj(v);
+          if (z < 0) { pen = false; continue; }
+          if (pen) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+          pen = true;
+        }
+      }
+      ctx.setLineDash(dash || []);
+      ctx.strokeStyle = style;
+      ctx.lineWidth = width;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+    if (on("coast")) strokeLines(G.coast, "#5d4a36", 0.7);
+    strokeLines(G.lines.filter((e) => !e.cut).map((e) => e.pts), "rgba(31,42,68,0.55)", 1, [4, 3]);
+    strokeLines(G.lines.filter((e) => e.cut).map((e) => e.pts), "#d4532b", 2.2);
+
+    G.hits = [];
+    for (const a of G.anchors) {
+      const [x, y, z] = proj(a.v);
+      if (z < 0) continue;
+      const cur = a.net === data.net;
+      ctx.beginPath();
+      ctx.arc(x, y, cur ? 6 : 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = cur ? "#1f2a44" : "rgba(255,255,255,0.9)";
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = cur ? "#fff" : "#1f2a44";
+      ctx.stroke();
+      G.hits.push({ net: a.net, x, y });
+    }
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  let raf = 0;
+  const requestGlobe = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawGlobe(); }); };
+
+  let drag = null;
+  cv.addEventListener("pointerdown", (e) => {
+    drag = { x: e.clientX, y: e.clientY, lat: view.lat, lng: view.lng, moved: false };
+    cv.setPointerCapture(e.pointerId);
+    cv.classList.add("dragging");
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+    const k = 180 / (cv.clientWidth * 0.9);
+    view.lng = drag.lng - dx * k;
+    view.lat = Math.max(-89, Math.min(89, drag.lat + dy * k));
+    requestGlobe();
+  });
+  cv.addEventListener("pointerup", (e) => {
+    const wasDrag = drag && drag.moved;
+    drag = null;
+    cv.classList.remove("dragging");
+    if (wasDrag || !G || !G.hits) return;
+    const r = cv.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const hit = G.hits.find((h) => Math.hypot(h.x - x, h.y - y) < 10);
+    if (hit) fused.params.set("net", String(hit.net));
+  });
+
+  // ------------------------------------------------------------------ controls
+  function syncControls() {
+    for (const id of ["shape", "res", "paper"]) {
+      document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === get(id))));
+    }
+    $("res-hint").textContent = RES_HINT[get("res")] || "";
+    document.querySelectorAll(".checks input").forEach((i) => {
+      i.checked = on(i.dataset.p);
+      if (i.dataset.p === "labels") i.disabled = Number(get("res")) > 1;
+    });
+  }
+
+  $("shape").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b || b.dataset.v === get("shape")) return;
+    fused.params.set("net", "auto");
+    fused.params.set("shape", b.dataset.v);
+  });
+  for (const id of ["res", "paper"]) {
+    $(id).addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (b) fused.params.set(id, b.dataset.v);
+    });
+  }
+  document.querySelectorAll(".checks input").forEach((i) =>
+    i.addEventListener("change", () => fused.params.set(i.dataset.p, i.checked ? "1" : "0")));
+
+  const stepNet = (d) => {
+    if (!data) return;
+    fused.params.set("net", String((data.net + d + data.net_count) % data.net_count));
+  };
+  $("net-prev").addEventListener("click", () => stepNet(-1));
+  $("net-next").addEventListener("click", () => stepNet(1));
+  $("auto").addEventListener("click", () => fused.params.set("net", "auto"));
+  $("print").addEventListener("click", () => window.print());
+  $("svg").addEventListener("click", () => {
+    if (!data) return;
+    const [w, h, name] = PAPER[get("paper")] || PAPER.a4;
+    const blob = new Blob([sheetSvg(w, h)], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `h3-${data.shape}-res${data.res}-${name.toLowerCase()}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  // ------------------------------------------------------------------ render loop
+  let seq = 0;
+  async function render() {
+    const my = ++seq;
+    syncControls();
+    await load();
+    if (my !== seq) return;
+    renderDesk();
+    requestGlobe();
+  }
+  fused.params.onChange(render);
+  window.addEventListener("resize", requestGlobe);
+  render();
+})();
+</script>
+</body>
+</html>

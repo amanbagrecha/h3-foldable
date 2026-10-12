@@ -1,0 +1,14 @@
+[project]
+name = "h3-foldable"
+version = "0.1.0"
+description = "Printable, foldable paper globe built on H3's own icosahedron."
+requires-python = ">=3.10"
+dependencies = [
+    "h3>=4.1",
+    "numpy",
+    "pillow",
+    "requests",
+]
+
+[tool.uv]
+package = false
